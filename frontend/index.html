@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered FAQ assistant for Chitkara University, Rajpura. Ask any question about admissions, fees, placements, and more.">
+    <title>Chitkara University FAQ Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Animated Background -->
+        <div class="bg-gradient"></div>
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <h1>Chitkara University</h1>
+                        <span class="logo-subtitle">AI FAQ Assistant</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn header-key" id="keyBtn" title="Set API key">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span id="keyStatusText">API key</span>
+                    </button>
+                    <button class="header-btn" id="uploadBtn" title="Upload a course handout (PDF / text)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <button class="header-btn" id="newChatBtn" title="Start a new conversation">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <div class="header-badge">
+                        <span class="status-dot"></span>
+                        Online
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <main class="chat-area" id="chatArea">
+            <!-- Welcome Message -->
+            <div class="welcome-container" id="welcomeContainer">
+                <div class="welcome-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                </div>
+                <h2>Welcome to Chitkara University FAQ</h2>
+                <p>Ask me anything about admissions, fees, placements, campus life, and more!</p>
+                <div class="suggestion-chips">
+                    <button class="chip" data-question="What are the B.Tech CSE subjects?">📚 B.Tech CSE Subjects</button>
+                    <button class="chip" data-question="What is the fee structure for B.Tech?">💰 Fee Structure</button>
+                    <button class="chip" data-question="What are the placement statistics?">📊 Placement Stats</button>
+                    <button class="chip" data-question="Tell me about hostel facilities">🏠 Hostel Facilities</button>
+                    <button class="chip" data-question="What scholarships are available?">🎓 Scholarships</button>
+                    <button class="chip" data-question="How does the grading system work?">📝 Grading System</button>
+                </div>
+            </div>
+
+            <!-- Messages will be appended here -->
+            <div class="messages-container" id="messagesContainer"></div>
+        </main>
+
+        <!-- Input Area -->
+        <footer class="input-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea
+                        id="questionInput"
+                        placeholder="Ask a question about Chitkara University..."
+                        rows="1"
+                        maxlength="500"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="input-hint">Powered by AI · Answers based on university knowledge base</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Upload Document Modal -->
+    <div class="modal-overlay hidden" id="uploadModal">
+        <div class="modal">
+            <div class="modal-title">Add Course Handout</div>
+            <p class="modal-desc">
+                Upload a <code>.pdf</code>, <code>.txt</code>, <code>.md</code>, or
+                <code>.json</code> file. It is split into chunks, embedded, and added
+                to the knowledge base so the assistant can answer from it.
+            </p>
+            <label class="upload-drop" id="uploadDrop">
+                <input type="file" id="uploadFile" class="upload-file-input"
+                       accept=".pdf,.txt,.md,.text,.json" />
+                <span id="uploadDropText">Click to choose a file</span>
+            </label>
+            <input
+                type="text"
+                id="uploadNs"
+                class="modal-input upload-ns"
+                placeholder="Agent namespace (e.g., course_handouts, B.Tech_CSE_Sem3)"
+            />
+            <p class="modal-desc upload-hint">
+                Namespace groups the chunks so they're easy to identify in sources.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" id="uploadCancel">Cancel</button>
+                <button class="modal-btn modal-save" id="uploadSave" disabled>Upload &amp; Store</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="modal-overlay hidden" id="keyModal">
+        <div class="modal">
+            <div class="modal-title">API Key Needed</div>
+            <p class="modal-desc" id="keyModalDesc">
+                This chat talks to a protected API. Enter the API key from the
+                backend <code>.env</code> file (<code>API_KEYS</code>).
+            </p>
+            <input
+                type="password"
+                id="keyInput"
+                class="modal-input"
+                placeholder="Paste your API key here"
+                autocomplete="off"
+                spellcheck="false"
+            />
+            <div class="modal-actions">
+                <button class="modal-btn modal-cancel" id="keyModalCancel">Cancel</button>
+                <button class="modal-btn modal-save" id="keyModalSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
