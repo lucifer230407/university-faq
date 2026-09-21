@@ -1,0 +1,283 @@
+[
+  {
+    "text": "Chitkara University, Rajpura is a private university located in Punjab, India. It was established in 2010 under the Chitkara University Act. The university offers undergraduate, postgraduate, and doctoral programs across multiple disciplines including Engineering, Business, Health Sciences, Art & Design, and more.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "about_university",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University offers B.E./B.Tech programs in Computer Science & Engineering, Electronics & Communication Engineering, Mechanical Engineering, Civil Engineering, and Electrical Engineering. B.Tech CSE has specializations in Artificial Intelligence & Machine Learning, Data Science, Cyber Security, Cloud Computing, and Full Stack Development.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "btech_programs",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "For B.Tech admissions at Chitkara University, students must have passed 10+2 with Physics, Chemistry, and Mathematics with a minimum of 60% aggregate marks. Admissions are based on merit in JEE Main, or the Chitkara University Common Entrance Test (CUCET), followed by a personal interaction round.",
+    "metadata": {
+      "agent_ns": "admissions",
+      "source_id": "btech_eligibility",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "The B.Tech CSE program at Chitkara University covers subjects such as Data Structures & Algorithms, Object-Oriented Programming, Database Management Systems, Operating Systems, Computer Networks, Software Engineering, Artificial Intelligence, Machine Learning, Web Development, Cloud Computing, and Cyber Security.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "btech_cse_subjects",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "The approximate annual tuition fee for B.Tech programs at Chitkara University is INR 2,50,000 to INR 3,50,000 depending on the specialization. Additional charges include hostel fee (INR 1,20,000 per year), mess fee (INR 60,000 per year), and a one-time registration fee of INR 25,000. Payment can be made in two installments per semester.",
+    "metadata": {
+      "agent_ns": "fees",
+      "source_id": "btech_fee_structure",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "Chitkara University provides merit-based and need-based scholarships. Merit scholarships cover up to 100% tuition fee waiver for students scoring above 95% in 10+2 or top JEE Main ranks. Sports scholarships and scholarships for economically weaker sections are also available. Students must apply during the admission process.",
+    "metadata": {
+      "agent_ns": "fees",
+      "source_id": "scholarships",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University provides on-campus hostel accommodation for both boys and girls. Rooms are available in single, double, and triple sharing options. Hostels include Wi-Fi, laundry service, 24/7 security, recreational rooms, and mess facilities. The hostel fee is approximately INR 1,20,000 per year for double sharing.",
+    "metadata": {
+      "agent_ns": "hostel",
+      "source_id": "hostel_info",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The academic calendar at Chitkara University follows a semester system. The odd semester runs from August to December, and the even semester runs from January to May. Mid-semester exams are held in October (odd) and March (even). End-semester exams are held in December (odd) and May (even). Results are typically declared within 3 weeks of the exam.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "academic_calendar",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University follows a Continuous Assessment pattern. Internal assessment contributes 50% (assignments, quizzes, mid-term exams, projects) and the end-semester exam contributes 50%. The grading system uses a 10-point CGPA scale: O (10), A+ (9), A (8), B+ (7), B (6), C (5), P (4), F (0). A minimum CGPA of 5.0 is required to pass.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "grading_system",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University has a dedicated Career Services & Corporate Relations department. The university has achieved placement rates above 90% for multiple years. Top recruiters include Microsoft, Amazon, Google, Infosys, TCS, Wipro, Deloitte, Accenture, and Cognizant. The highest package offered has been around INR 45 LPA, with an average package of INR 6-8 LPA for B.Tech CSE.",
+    "metadata": {
+      "agent_ns": "placements",
+      "source_id": "placement_stats",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University offers M.Tech programs in Computer Science, VLSI Design, Structural Engineering, and Thermal Engineering. MBA is offered with specializations in Marketing, Finance, HR, Business Analytics, and International Business. M.Sc is available in Physics, Chemistry, Mathematics, and Biotechnology.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "pg_programs",
+      "campus": "Rajpura",
+      "level": "PG"
+    }
+  },
+  {
+    "text": "The Chitkara University campus in Rajpura is spread over 60 acres. Facilities include state-of-the-art labs, a central library with over 1,00,000 books and digital resources, sports complex with cricket ground, basketball court, swimming pool, gym, cafeteria, medical center, ATM, and auditoriums.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "campus_facilities",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The university library provides access to IEEE, Springer, Elsevier, ACM Digital Library, and other online databases. Students can access e-journals, e-books, and research papers through the campus network or VPN from off-campus. The library is open from 8 AM to 11 PM on all working days.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "library_info",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University has over 30 student clubs and societies including coding club, robotics club, entrepreneurship cell (E-Cell), literary club, music & dance society, photography club, NSS, and various cultural committees. Annual festivals include Inferno (cultural fest) and Hackathons organized by the tech clubs.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "clubs_activities",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "For MBA admissions at Chitkara University, candidates must hold a bachelor's degree with minimum 50% marks. Admissions are based on CAT/MAT/XAT/CMAT scores or the Chitkara University entrance test, followed by a group discussion and personal interview. The MBA program fee is approximately INR 3,00,000 per year.",
+    "metadata": {
+      "agent_ns": "admissions",
+      "source_id": "mba_admissions",
+      "campus": "Rajpura",
+      "level": "PG"
+    }
+  },
+  {
+    "text": "Students at Chitkara University can avail education loans through partner banks including SBI, HDFC, ICICI, and Punjab National Bank. The university provides required documentation support for loan processing. EMI options and interest subsidies are available for economically weaker students under government schemes.",
+    "metadata": {
+      "agent_ns": "fees",
+      "source_id": "education_loans",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University allows lateral entry admission to the 2nd year of B.Tech for diploma holders with a minimum of 60% marks. Lateral entry students are eligible for the same placement opportunities, scholarships, and facilities as regular students. Applications are accepted from June to August every year.",
+    "metadata": {
+      "agent_ns": "admissions",
+      "source_id": "lateral_entry",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "The Training & Placement cell at Chitkara University conducts regular workshops, mock interviews, aptitude training, soft skills development, and technical boot camps to prepare students for campus placements. Pre-placement activities start from the 5th semester. Internship opportunities are facilitated from the 6th semester onwards.",
+    "metadata": {
+      "agent_ns": "placements",
+      "source_id": "placement_preparation",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University's anti-ragging policy strictly prohibits any form of ragging on campus. The university has an Anti-Ragging Committee and Anti-Ragging Squad as per UGC guidelines. Students found guilty face penalties ranging from suspension to expulsion. A 24/7 anti-ragging helpline is available for reporting incidents.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "anti_ragging",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University offers Ph.D programs in Engineering, Management, Sciences, and Pharmacy. Candidates must hold a Master's degree with 55% marks (50% for SC/ST). Admission is through a written test and interview. Full-time Ph.D scholars receive a monthly stipend of INR 25,000 to INR 35,000. The minimum duration is 3 years.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "phd_programs",
+      "campus": "Rajpura",
+      "level": "PhD"
+    }
+  },
+  {
+    "text": "Students who are not satisfied with their end-semester result can apply for re-evaluation or re-totaling of answer sheets. The application form must be submitted to the Examination Cell within 7 working days of result declaration. A re-evaluation fee of INR 1,000 per subject applies. Re-evaluated marks are final and verified by a board of two senior examiners.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "exam_revaluation",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Students who fail a subject in the end-semester exam are eligible to appear for the supplementary (backlog) exam held during the summer break. A fail grade (F) does not appear on the transcript if the student clears the subject in the supplementary exam with a minimum grade of P. Students can carry a maximum of two backlogs at any point; more than two requires repeating the year.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "backlog_policy",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University requires a minimum of 75% attendance in every course to appear for the end-semester examination. Students with attendance between 60% and 75% may be allowed to sit for the exam after paying a condonation fee and submitting a written undertaking approved by the Dean. Attendance below 60% results in detention, and the course must be repeated.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "attendance_policy",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Hostel rules at Chitkara University require all residents to check in by 9:00 PM on weekdays and 10:00 PM on weekends. Overnight leave must be applied for through the hostel management portal and approved by the Warden 48 hours in advance. Visitors are allowed in the common area only from 4 PM to 7 PM. Electrical appliances such as induction cookers and heaters are not permitted in rooms. Alcohol, tobacco, and smoking are strictly prohibited inside the hostel premises.",
+    "metadata": {
+      "agent_ns": "hostel",
+      "source_id": "hostel_rules",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Chitkara University provides transport facilities through a fleet of buses covering Rajpura town, Patiala, Chandigarh, Mohali, and nearby villages. A monthly bus pass costs INR 1,500 to INR 3,000 depending on the distance. Buses operate daily including weekends at fixed pick-up and drop-off points marked on the university transport route map. Bus pass renewal is done at the beginning of each semester through the transport office.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "transport",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The academic integrity policy at Chitkara University treats plagiarism, cheating in examinations, and submission of work copied from other students as serious offences. Plagiarized assignments are rejected and attract a penalty ranging from a zero grade to disciplinary action under the University Disciplinary Committee. Repeated offences can lead to suspension or cancellation of registration. All final-year project reports are checked through plagiarism detection software with an acceptable similarity limit of 20%.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "academic_integrity",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Industrial training and internships are a mandatory part of B.Tech and MBA programs at Chitkara University. B.Tech students complete an 8-week internship during the summer after the 6th semester, and MBA students complete a 6-month industry internship in the final year. Internships must be reported through the Training & Placement cell for credit approval. Students also earn credits through the university's 21st Century Curriculum which embeds industry projects into the regular coursework.",
+    "metadata": {
+      "agent_ns": "academics",
+      "source_id": "internship_policy",
+      "campus": "Rajpura",
+      "level": "UG"
+    }
+  },
+  {
+    "text": "Chitkara University has signed memorandums of understanding with partner universities for student exchange and dual-degree programs. Eligible students can spend one or two semesters at partner institutions in the UK, Canada, Australia, Germany, and the UAE. Selection is based on CGPA (minimum 7.5), English proficiency, and an interview. Study-abroad students are responsible for travel and living costs, while tuition is governed by the partner agreement.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "international_programs",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The University Disciplinary Committee at Chitkara University handles cases of misconduct including ragging, possession of prohibited items, vandalism, and breach of academic integrity. Students are expected to carry their ID card at all times and display it on request. Penalties range from a written warning, fine, and loss of attendance to suspension or expulsion depending on the severity. All students and parents must accept the code of conduct during the admission process.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "code_of_conduct",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The fee refund policy at Chitkara University allows a full refund of tuition fees if a student withdraws within the first 15 days of the academic session. Withdrawal between 15 and 30 days of the session attracts a 25% deduction. No refund is given for withdrawal after 30 days, except for the security deposit of INR 10,000 which is refunded on completion of the formalities. Refund requests are processed within 4 to 6 weeks through the accounts office.",
+    "metadata": {
+      "agent_ns": "fees",
+      "source_id": "fee_refund_policy",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Hall tickets for end-semester examinations are issued through the student portal two weeks before the exam. Students must bring their printed hall ticket and university ID card to the examination hall. Entry closes 15 minutes after the start of the exam. Students cannot carry mobile phones, smartwatches, or any digital devices into the examination hall. Bags and other belongings are to be deposited at the designated area outside the hall.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "exam_instructions",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "All full-time students at Chitkara University are provided with a university email account and Wi-Fi access through the campus network. The IT Helpdesk supports password resets, laptop registration, and course portal access and can be reached at itsupport@chitkara.edu.in or the helpdesk counter in the IT block. Student accounts are deactivated 30 days after graduation or withdrawal from the university.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "it_services",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "The academic calendar and examination schedules are notified through the university student portal at least two weeks in advance. Mid-semester examination dates are announced by the Examination Cell in the fourth week of each semester. Any changes to the schedule are published on the portal and communicated through the class representatives. Students must check the portal weekly for updates on exam timetables and result declarations.",
+    "metadata": {
+      "agent_ns": "exams",
+      "source_id": "exam_schedule_notifications",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Students seeking disability support at Chitkara University can register with the Student Support Cell. The university provides extra time of up to 30 minutes per examination, scribes for students with motor disabilities, and accessible hostel rooms for students with mobility requirements. Registration requires a valid medical certificate from an authorized medical board and must be completed at the start of each semester.",
+    "metadata": {
+      "agent_ns": "general",
+      "source_id": "disability_support",
+      "campus": "Rajpura"
+    }
+  }
+]
