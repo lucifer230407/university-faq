@@ -1,2 +1,7 @@
 pymongo
 python-dotenv
+openai
+fastapi
+uvicorn[standard]
+python-multipart
+pypdf
