@@ -2,6 +2,9 @@
 
 AI-powered FAQ assistant for **Chitkara University, Rajpura**. Students ask natural-language questions and get grounded answers built over an Azure CosmosDB **MongoDB vCore** knowledge base with vector search, using Azure OpenAI for embeddings and chat. When the local knowledge base has no answer (or you ask about current info), the assistant **searches the live web** for up-to-date Chitkara University information and cites the pages it used.
 
+🌐 **Live Production URL**: [https://chitkara-faq-assistant.azurewebsites.net](https://chitkara-faq-assistant.azurewebsites.net)
+
+
 ## Features
 
 - **RAG pipeline** `/api/ask` — question → embedding → vector search (cosine, top-5) → GPT-4.1-mini answer with cited sources.
