@@ -6,16 +6,20 @@ AI-powered FAQ assistant for **Chitkara University, Rajpura**. Students ask natu
 
 - **RAG pipeline** `/api/ask` — question → embedding → vector search (cosine, top-5) → GPT-4.1-mini answer with cited sources.
 - **Web grounding** — optional live web search (DuckDuckGo / Bing API / Wikipedia) for current, uncovered, or transferred topics. Top pages are fetched, their text added to the prompt, and shown as clickable source links in the chat UI.
+- **Redesigned Stitch Editorial Frontend** — elegant modern UI using Tailwind CSS with an academic typography scale (**EB Garamond** display headings and **Plus Jakarta Sans** body), refined university color palette, smooth micro-interactions, responsive drawer, and Material Symbols.
+- **Live RAG Trace & Inspector** — side panel revealing real-time cosine similarity scores, matched chunk excerpts, top-k ranking, and retrieval/generation latency for full auditability and transparency.
+- **System Health & Latency Monitor** — live status badge measuring real-time `/api/health` round-trip latency and Cosmos DB connection state.
+- **Interactive Developer Workbench** — switchable live curl command snippets for `/api/ask`, `/api/documents`, and `/api/health` right in the UI.
 - **Conversation memory** — multi-turn chat via `session_id` (latest 12 messages). Follow-ups are rewritten into standalone search queries using the history before retrieval. Optional Redis backend shares history across workers/restarts.
-- **Document ingestion** — upload `.txt`, `.md`, `.json`, or `.pdf` files (course handouts) from the chat UI or `POST /api/documents`; automatically chunked (with real overlap), embedded, and stored into the knowledge base.
+- **Admin-Gated Document Ingestion & Source Verification** — upload `.txt`, `.md`, `.json`, or `.pdf` files (course handouts); documents are automatically chunked, embedded, and tagged. Strictly restricted to administrators (`role: admin`) with untrusted sources filtered out by `is_official_source()` to prevent knowledge poisoning.
 - **Expanded FAQ data** — 34 seeded documents covering academics, admissions, fees, hostels, exams, placements, transport, campus, anti-ragging, and Ph.D.
 - **Authentication** — username/password login via `POST /api/auth/login` issuing signed JWT access tokens (HS256). Anyone can self-register via `POST /api/auth/register` when `ALLOW_SIGNUP=true` (default); the env-defined `ADMIN_USERNAME`/`ADMIN_PASSWORD` admin needs no seed step, and extra users can be stored in the `users` collection via `scripts/create_user.py`. Protected routes accept `Authorization: Bearer <token>`; the legacy `X-API-Key` header keeps working for scripts and automated access.
 - **Rate limiting** — sliding-window limiter per client IP with proper `X-Forwarded-For` handling behind trusted proxies; optional Redis for distributed limiting.
-- **Frontend** — vanilla HTML/CSS/JS chat UI with suggestion chips, typing indicator, **real markdown (marked) + XSS protection (DOMPurify)**, source tags, web source links, "new chat," and API-key input. Served same-origin by the backend (optional) so no CORS is needed.
+- **Markdown & Security** — chat messages render GitHub-flavored markdown via `marked` with strict sanitization via `DOMPurify` to prevent XSS.
 
 ## Tech Stack
 
-FastAPI · Uvicorn · Python 3.14 · PyMongo · Azure CosmosDB for MongoDB (vCore, IVF vector index, 1536 dims) · Azure OpenAI (`text-embedding-3-small`, `gpt-4.1-mini`) · httpx web search · JWT (PyJWT, HS256) · Optional Redis · Vanilla frontend
+FastAPI · Uvicorn · Python 3.14 · PyMongo · Azure CosmosDB for MongoDB (vCore, IVF vector index, 1536 dims) · Azure OpenAI (`text-embedding-3-small`, `gpt-4.1-mini`) · Tailwind CSS & Material Symbols · httpx web search · JWT (PyJWT, HS256) · Optional Redis
 
 ## Project Structure
 
@@ -34,21 +38,23 @@ university-faq/
 │   │   ├── seed.py                 # Idempotent FAQ re-seed (replaces by source_id)
 │   │   ├── db/documentdb.py        # Mongo client + collections
 │   │   └── services/
-│   │       ├── auth.py            # JWT login, password hashing, user lookup
+│   │       ├── auth.py            # JWT login, password hashing, admin verification
 │   │       ├── embeddings.py       # generate_embedding()
-│   │       ├── search.py           # vector search
+│   │       ├── search.py           # vector search + source verification
 │   │       ├── web_search.py       # web grounding (search + page fetch)
 │   │       ├── chat.py             # RAG + conversation memory + web grounding
 │   │       ├── conversations.py    # session store (memory or Redis)
 │   │       ├── ingestion.py        # extract → chunk (overlap) → embed → store
 │   │       └── security.py         # API-key auth + rate limiting (Redis-capable)
 │   ├── scripts/                    # Dev/ops tools
-    │   │   ├── create_user.py      # python -m scripts.create_user --username alice ...
-    │   │   ├── create_vector_index.py  # python -m scripts.create_vector_index
-    │   │   └── ...                     # ad-hoc debug scripts (vector_search, etc.)
-    │   └── tests/                      # pytest suite (mocked Mongo/OpenAI/web)
+│   │   ├── create_user.py          # python -m scripts.create_user --username alice ...
+│   │   ├── create_vector_index.py  # python -m scripts.create_vector_index
+│   │   └── ...                     # ad-hoc debug scripts (vector_search, etc.)
+│   └── tests/                      # pytest suite (mocked Mongo/OpenAI/web/trust)
 └── frontend/
-    ├── index.html / style.css / script.js
+    ├── index.html                  # Redesigned Stitch editorial layout & RAG inspector
+    ├── style.css                   # Custom styles, animations & design token overrides
+    └── script.js                   # Chat logic, session sync, live health, RAG inspector
 ```
 
 ## Environment Variables (`backend/.env` — template in `backend/.env.example`)
@@ -140,23 +146,23 @@ docker compose up --build
 
 ```bash
 cd backend
-python -m pytest tests -q      # 66 tests, no network/cloud access needed
+python -m pytest tests -q      # Unit & integration test suite (mocked Mongo/OpenAI/web)
 ```
 
 ## API
 
-| Method | Path | Description | Rate limit |
-| ------ | ---- | ----------- | ---------- |
-| GET | `/api/health` | DB connectivity + web-search status | – |
-| GET | `/api/auth/status` | Auth mode (JWT/API-key) and whether login is enabled | – |
-| POST | `/api/auth/login` | `{username, password}` → `{access_token, user}` (JWT) | – |
-| POST | `/api/auth/register` | `{username, password, name?}` → `{access_token, user}` | 5/min |
-| GET | `/api/auth/me` | Currently authenticated user (Bearer token) | – |
-| POST | `/api/ask` | `{question, session_id?}` → `{answer, sources, session_id}` | 10/min |
-| POST | `/api/clear` | `{session_id?}` → forget history | 10/min |
-| POST | `/api/documents` | Multipart upload `file` + optional `agent_ns` | 5/min |
+| Method | Path | Description | Access | Rate limit |
+| ------ | ---- | ----------- | ------ | ---------- |
+| GET | `/api/health` | DB connectivity + web-search status | Public | – |
+| GET | `/api/auth/status` | Auth mode (JWT/API-key) and whether login is enabled | Public | – |
+| POST | `/api/auth/login` | `{username, password}` → `{access_token, user}` (JWT) | Public | – |
+| POST | `/api/auth/register` | `{username, password, name?}` → `{access_token, user}` | Public | 5/min |
+| GET | `/api/auth/me` | Currently authenticated user info | Bearer token | – |
+| POST | `/api/ask` | `{question, session_id?}` → `{answer, sources, session_id}` | Authenticated | 10/min |
+| POST | `/api/clear` | `{session_id?}` → forget conversation history | Authenticated | 10/min |
+| POST | `/api/documents` | Multipart upload `file` + optional `agent_ns` | **Admin only** | 5/min |
 
-Protected routes require `Authorization: Bearer <token>` (from `/api/auth/login`) or, for backwards compatibility, an `X-API-Key` header when `API_KEYS` is configured. Auth is verified before the rate limiter runs, so anonymous callers can't burn a user's budget.
+Protected routes require `Authorization: Bearer <token>` (from `/api/auth/login`) or, for backwards compatibility, an `X-API-Key` header when `API_KEYS` is configured. Auth is verified before the rate limiter runs, so anonymous callers cannot exhaust user budgets.
 
 ```bash
 # 1. Get a token
@@ -180,12 +186,13 @@ python -m scripts.create_user --username alice --password 's3cret' --name 'Alice
 Or let users self-register from the UI / API (see `ALLOW_SIGNUP`): new accounts get the `user` role automatically.
 
 Web-sourced answers include `sources[]` entries with `metadata.kind = "web"`,
-`metadata.source_url`, and `metadata.title`; the frontend renders them as links.
+`metadata.source_url`, and `metadata.title`; the frontend renders them as links and displays them in the Live RAG Inspector.
 
 ## Notes / Limitations
 
 - Conversation history and rate limits are in-memory by default (lost on restart / not shared across workers). Set `REDIS_URL` (see `docker-compose.yml`) to make both distributed.
 - Web grounding defaults to DuckDuckGo's free HTML endpoint — no API key, but it's an unofficial endpoint. For production use, set `WEB_SEARCH_PROVIDER=bing` and provide `BING_SEARCH_API_KEY` (Azure resource).
 - JWT tokens expire after `ACCESS_TOKEN_EXPIRE_MINUTES`; the frontend silently re-prompts for sign-in on 401. For a production multi-user deployment set `ALLOW_SIGNUP=false` (or restrict the `users` collection) so only admin-created accounts can sign in.
+- Handout ingestion is strictly restricted to administrator accounts, and knowledge retrieval ignores untrusted submissions.
 - `UserWarning` about CosmosDB from PyMongo on startup is harmless.
 - `backend/.env` is gitignored and must never be committed; rotate the CosmosDB/OpenAI credentials immediately if the file is ever exposed.

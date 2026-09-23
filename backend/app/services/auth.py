@@ -195,3 +195,13 @@ async def require_auth(
             pass
 
     raise HTTPException(status_code=401, detail="Invalid or missing credentials.")
+
+
+async def require_admin(user: dict = Depends(require_auth)) -> dict:
+    """Only administrators may change the official knowledge base."""
+    if user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can update the university knowledge base.",
+        )
+    return user

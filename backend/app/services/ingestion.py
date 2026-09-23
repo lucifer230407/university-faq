@@ -130,7 +130,12 @@ def chunk_text(text: str, size: int = None, overlap: int = None) -> list[str]:
     return chunks
 
 
-def ingest_document(filename: str, data: bytes, agent_ns: str = "knowledge_base") -> int:
+def ingest_document(
+    filename: str,
+    data: bytes,
+    agent_ns: str = "knowledge_base",
+    uploaded_by: str = "admin",
+) -> int:
     """
     Extract, chunk, embed, and store a document into the 'documents' collection.
 
@@ -163,6 +168,8 @@ def ingest_document(filename: str, data: bytes, agent_ns: str = "knowledge_base"
                 "filename": filename,
                 "chunk_index": i,
                 "chunk_count": len(chunks),
+                "trusted": True,
+                "uploaded_by": uploaded_by,
             },
         })
         time.sleep(0.1)

@@ -57,7 +57,14 @@ function getHeaders() {
     return headers;
 }
 
+function isAdmin() {
+    return !!(currentUser && currentUser.role === "admin");
+}
+
 function updateAuthStatus() {
+    document.body.classList.toggle("is-admin", isAdmin());
+    const locked = document.getElementById("ingestLocked");
+    if (locked) locked.classList.toggle("hidden", isAdmin());
     keyStatusText.textContent = currentUser
         ? currentUser.name || currentUser.username
         : !authEnabled
@@ -278,6 +285,13 @@ function resetUploadModal() {
 }
 
 function openUploadModal() {
+    if (!isAdmin()) {
+        appendMessage(
+            "bot",
+            "Only an administrator can add documents. Student uploads are not used as answers."
+        );
+        return;
+    }
     resetUploadModal();
     uploadModal.classList.remove("hidden");
 }
@@ -327,6 +341,7 @@ async function uploadDocument(retried) {
     uploadInProgress = true;
     uploadSave.disabled = true;
     uploadSave.textContent = "Uploading…";
+    setIngest("Uploading…", file.name, "35%", "Parsing and embedding the file.");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -355,6 +370,7 @@ async function uploadDocument(retried) {
         }
 
         closeUploadModal();
+        setIngest("Stored", file.name, "100%", `${data.chunks} chunk(s) in ${data.agent_ns}. You can ask about this file now.`);
         appendMessage(
             "bot",
             `Stored **${file.name}** as **${data.chunks}** chunk(s) in namespace ` +
@@ -362,6 +378,7 @@ async function uploadDocument(retried) {
         );
     } catch (err) {
         closeUploadModal();
+        setIngest("Failed", file.name, "0%", err.message);
         appendMessage(
             "bot",
             `Upload failed: ${err.message}. Check the file type and try again.`
@@ -397,7 +414,12 @@ async function checkAuth() {
                 const me = await fetch(`${API_BASE}/api/auth/me`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                if (!me.ok) clearAuth();
+                if (!me.ok) {
+                    clearAuth();
+                } else {
+                    const meUser = await me.json().catch(() => null);
+                    if (meUser && meUser.username) storeAuth(meUser);
+                }
             } catch {
                 // Network hiccup; leave state alone.
             }
@@ -409,6 +431,27 @@ async function checkAuth() {
 
 updateAuthStatus();
 checkAuth();
+
+const chatBox = document.getElementById("chatBox");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const fullscreenIcon = document.getElementById("fullscreenIcon");
+
+function syncFullscreenIcon() {
+    const on = document.fullscreenElement === chatBox;
+    if (fullscreenIcon) fullscreenIcon.textContent = on ? "fullscreen_exit" : "fullscreen";
+    if (fullscreenBtn) fullscreenBtn.title = on ? "Exit full screen" : "Full screen";
+}
+
+if (fullscreenBtn && chatBox) {
+    fullscreenBtn.addEventListener("click", async () => {
+        if (document.fullscreenElement === chatBox) {
+            await document.exitFullscreen();
+        } else {
+            await chatBox.requestFullscreen();
+        }
+    });
+    document.addEventListener("fullscreenchange", syncFullscreenIcon);
+}
 
 newChatBtn.addEventListener("click", async () => {
     // Clear backend memory for this session, then reset the UI.
@@ -426,6 +469,8 @@ newChatBtn.addEventListener("click", async () => {
     localStorage.setItem("faq_session_id", sessionId);
     messagesContainer.innerHTML = "";
     welcomeContainer.classList.remove("hidden");
+    syncSessionBadge();
+    resetInspection();
     questionInput.focus();
 });
 
@@ -451,6 +496,156 @@ sendBtn.addEventListener("click", () => {
         sendQuestion();
     }
 });
+
+const promptForm = document.getElementById("prompt-form");
+if (promptForm) {
+    promptForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!isLoading && questionInput.value.trim()) sendQuestion();
+    });
+}
+
+const ingestOpen = document.getElementById("ingestOpen");
+if (ingestOpen) ingestOpen.addEventListener("click", openUploadModal);
+
+function syncSessionBadge() {
+    const badge = document.getElementById("sessionBadge");
+    if (badge) badge.textContent = `session ${sessionId.slice(0, 8)}`;
+}
+syncSessionBadge();
+
+function setIngest(status, fileName, width, detail) {
+    const statusEl = document.getElementById("ingestStatus");
+    const nameEl = document.getElementById("ingestFileName");
+    const bar = document.getElementById("ingestBar");
+    const detailEl = document.getElementById("ingestDetail");
+    if (statusEl) statusEl.textContent = status;
+    if (nameEl && fileName) nameEl.textContent = fileName;
+    if (bar) bar.style.width = width;
+    if (detailEl && detail) detailEl.textContent = detail;
+}
+
+function updateInspection(sources, elapsedMs) {
+    const status = document.getElementById("traceStatus");
+    const embed = document.getElementById("embedMeta");
+    const gen = document.getElementById("genMeta");
+    const count = document.getElementById("matchCount");
+    const list = document.getElementById("retrievalMatches");
+    const excerpt = document.getElementById("sourceExcerpt");
+    const scoreEl = document.getElementById("excerptScore");
+    if (status) status.textContent = "Live";
+    if (embed) embed.textContent = `${sources.length} hit${sources.length === 1 ? "" : "s"}`;
+    if (gen) gen.textContent = elapsedMs != null ? `${elapsedMs}ms` : "gpt";
+    if (count) count.textContent = `top ${Math.min(sources.length, 5)}`;
+    if (!list) return;
+    list.innerHTML = "";
+    if (!sources.length) {
+        list.innerHTML = `<p class="text-secondary text-body-sm">No local chunks passed the similarity threshold. The answer may use web grounding or say it doesn't know.</p>`;
+        if (excerpt) excerpt.textContent = "No excerpt — nothing scored high enough to cite.";
+        if (scoreEl) scoreEl.textContent = "—";
+        return;
+    }
+    sources.slice(0, 3).forEach((s, i) => {
+        const meta = s.metadata || {};
+        const title = meta.title || meta.agent_ns || meta.kind || `Source ${i + 1}`;
+        const row = document.createElement("div");
+        row.className = "p-2 rounded bg-surface-container-lowest border-l-4 border-primary-container flex items-center justify-between gap-2";
+        const left = document.createElement("div");
+        left.className = "overflow-hidden";
+        const name = document.createElement("div");
+        name.className = "font-semibold text-on-surface truncate";
+        name.textContent = title;
+        const sub = document.createElement("div");
+        sub.className = "text-[11px] text-secondary truncate";
+        sub.textContent = (s.text || "").replace(/\s+/g, " ").slice(0, 80);
+        left.append(name, sub);
+        const score = document.createElement("span");
+        score.className = "font-mono font-bold text-primary bg-primary-fixed/60 px-2 py-0.5 rounded text-xs shrink-0";
+        score.textContent = Number(s.score || 0).toFixed(3);
+        row.append(left, score);
+        list.appendChild(row);
+    });
+    const top = sources[0];
+    if (excerpt) excerpt.textContent = top.text || "";
+    if (scoreEl) scoreEl.textContent = Number(top.score || 0).toFixed(3);
+}
+
+function resetInspection() {
+    const status = document.getElementById("traceStatus");
+    const list = document.getElementById("retrievalMatches");
+    const excerpt = document.getElementById("sourceExcerpt");
+    const embed = document.getElementById("embedMeta");
+    const gen = document.getElementById("genMeta");
+    const scoreEl = document.getElementById("excerptScore");
+    if (status) status.textContent = "Idle";
+    if (embed) embed.textContent = "waiting";
+    if (gen) gen.textContent = "gpt · —";
+    if (scoreEl) scoreEl.textContent = "—";
+    if (excerpt) excerpt.textContent = "The top matching passage will appear here after you ask a question.";
+    if (list) list.innerHTML = `<p class="text-secondary text-body-sm">No query yet.</p>`;
+}
+
+async function checkHealth() {
+    const ribbon = document.getElementById("healthRibbon");
+    const pill = document.getElementById("healthPill");
+    const latency = document.getElementById("healthLatency");
+    const db = document.getElementById("healthDb");
+    const dot = document.getElementById("healthDot");
+    try {
+        const t0 = performance.now();
+        const res = await fetch(`${API_BASE}/api/health`);
+        const ms = Math.round(performance.now() - t0);
+        const data = await res.json().catch(() => ({}));
+        const ok = res.ok && data.status === "healthy";
+        if (ribbon) {
+            ribbon.textContent = ok
+                ? "Chitkara AI live · Cosmos DB vector search · Azure OpenAI"
+                : "Chitkara AI · API unreachable or database down";
+        }
+        if (pill) pill.textContent = `GET /api/health: ${res.status}${data.status ? " " + data.status : ""}`;
+        if (latency) latency.textContent = `${ms}ms`;
+        if (db) db.textContent = data.database === "connected" ? "Database connected" : "Database down";
+        if (dot) dot.classList.toggle("opacity-40", !ok);
+    } catch {
+        if (ribbon) ribbon.textContent = "Chitkara AI · API not reachable";
+        if (pill) pill.textContent = "GET /api/health: offline";
+        if (db) db.textContent = "Database unknown";
+    }
+}
+checkHealth();
+
+const SNIPPETS = {
+    ask: `curl -X POST $API/api/ask \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"question":"How do I get an exam paper re-evaluated?","session_id":"demo"}'`,
+    docs: `curl -X POST $API/api/documents \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -F "file=@handout.pdf" \\
+  -F "agent_ns=course_handouts"`,
+    health: `curl $API/api/health`,
+};
+
+function switchTab(type) {
+    const box = document.getElementById("code-content");
+    if (!box) return;
+    ["ask", "docs", "health"].forEach((name) => {
+        const btn = document.getElementById(`tab-${name}`);
+        if (!btn) return;
+        btn.className = name === type
+            ? "px-2.5 py-1 rounded font-mono text-xs bg-primary-container text-white"
+            : "px-2.5 py-1 rounded font-mono text-xs text-secondary-fixed-dim";
+    });
+    const pre = document.createElement("pre");
+    pre.className = "text-white whitespace-pre-wrap";
+    pre.textContent = (SNIPPETS[type] || "").replaceAll("$API", API_BASE);
+    box.replaceChildren(pre);
+}
+
+document.getElementById("tab-ask")?.addEventListener("click", () => switchTab("ask"));
+document.getElementById("tab-docs")?.addEventListener("click", () => switchTab("docs"));
+document.getElementById("tab-health")?.addEventListener("click", () => switchTab("health"));
+switchTab("ask");
 
 // ---- Suggestion Chips ----
 document.querySelectorAll(".chip").forEach((chip) => {
@@ -500,6 +695,7 @@ async function sendQuestion() {
     // Show typing indicator
     const typingEl = appendTypingIndicator();
 
+    const started = performance.now();
     try {
         const response = await postAsk(question);
 
@@ -526,8 +722,8 @@ async function sendQuestion() {
         // Remove typing indicator
         typingEl.remove();
 
-        // Add bot response
         appendMessage("bot", data.answer, data.sources);
+        updateInspection(data.sources || [], Math.round(performance.now() - started));
     } catch (err) {
         typingEl.remove();
         appendMessage(

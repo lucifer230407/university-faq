@@ -66,14 +66,38 @@ def test_ask_rejects_blank_question(monkeypatch):
 
 def test_upload_rejects_empty_file(monkeypatch):
     settings = main.settings
+    monkeypatch.setattr(settings, "JWT_SECRET", "test-jwt-secret")
+    monkeypatch.setattr(settings, "ADMIN_USERNAME", "admin")
+    monkeypatch.setattr(settings, "ADMIN_PASSWORD", "adminpass")
     monkeypatch.setattr(settings, "API_KEYS_RAW", "")
     client = TestClient(main.app)
+    token = main.create_access_token("admin")
     resp = client.post(
         "/api/documents",
         files={"file": ("x.txt", b"", "text/plain")},
         data={"agent_ns": "ns"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 400
+
+
+def test_upload_rejects_non_admin(monkeypatch):
+    settings = main.settings
+    monkeypatch.setattr(settings, "JWT_SECRET", "test-jwt-secret")
+    monkeypatch.setattr(settings, "API_KEYS_RAW", "")
+
+    def student(username):
+        return {"username": username, "name": username, "role": "user"}
+
+    monkeypatch.setattr("app.services.auth.get_user", student)
+    client = TestClient(main.app)
+    token = main.create_access_token("student")
+    resp = client.post(
+        "/api/documents",
+        files={"file": ("x.txt", b"false claim", "text/plain")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 403
 
 
 def test_clear_accepts_session_id_only(monkeypatch):

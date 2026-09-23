@@ -12,6 +12,7 @@ from app.services.auth import (
     login_enabled,
     public_user,
     register_user,
+    require_admin,
     require_auth,
     signup_enabled,
 )
@@ -209,13 +210,14 @@ def clear_session(request: ClearRequest):
 
 @app.post(
     "/api/documents",
-    dependencies=[Depends(require_auth), *rate_limit("documents")],
+    dependencies=[*rate_limit("documents")],
 )
 async def upload_document(
     file: UploadFile,
     agent_ns: str = Form(default="knowledge_base", max_length=80),
+    user: dict = Depends(require_admin),
 ):
-    """Ingest a text/PDF document into the knowledge base."""
+    """Ingest a text/PDF document. Admin only — students cannot add sources."""
     # Stream the upload in chunks and reject early once the size cap is hit,
     # instead of buffering arbitrarily large files in memory first.
     max_bytes = settings.MAX_UPLOAD_BYTES
@@ -236,7 +238,12 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Empty file.")
 
     try:
-        chunk_count = ingest_document(file.filename, bytes(data), agent_ns)
+        chunk_count = ingest_document(
+            file.filename,
+            bytes(data),
+            agent_ns,
+            uploaded_by=user.get("username") or "admin",
+        )
     except ValueError as e:
         # Expected client errors (bad file type, no text) — safe to surface.
         raise HTTPException(status_code=400, detail=str(e))
