@@ -279,5 +279,21 @@
       "source_id": "disability_support",
       "campus": "Rajpura"
     }
+  },
+  {
+    "text": "The main campus of Chitkara University, Punjab is located in Jansla village, Rajpura, Patiala district, Punjab. Address: Chandigarh-Patiala National Highway (NH-64), Near Rajpura, Punjab 140401, India. GPS coordinates: 30.5164° N, 76.6586° E (DMS 30°30'59\"N 76°39'31\"E). The campus is about 33 km from Chandigarh, about 6 km from Rajpura town, and roughly 20 km from Patiala. The nearest airport is Chandigarh International Airport (also known as Shaheed Bhagat Singh International Airport), about 40 km away. The nearest railway station is Rajpura Junction, which is about 6 km from the campus. Google Maps location: 'Chitkara University, Chandigarh-Patiala National Highway, Punjab 140401'.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "location_main_campus",
+      "campus": "Rajpura"
+    }
+  },
+  {
+    "text": "Besides the main campus at Rajpura in Punjab, Chitkara University operates additional campuses. The Himachal Pradesh campus, known as Chitkara University, Himachal Pradesh, is located at Atal Shiksha Kunj, Kalujhanda, Baddi, District Solan, Himachal Pradesh 174103, India. The university also has information and liaison centres, including the Chandigarh Information Centre at SCO 160-161, Sector 9-C, Chandigarh 160009, and an office at Unit No. A 201-202, Elante Mall Office Complex, Industrial Area Phase 1, Chandigarh 160002. Students and parents should confirm the exact campus and its address before visiting.",
+    "metadata": {
+      "agent_ns": "campus",
+      "source_id": "location_other_campuses",
+      "campus": "Himachal Pradesh"
+    }
   }
 ]

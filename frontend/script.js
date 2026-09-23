@@ -1,4 +1,11 @@
-const API_BASE = "http://localhost:8000";
+// API base: reuse the page's origin when served over http(s) (e.g. the backend
+// serves the frontend at "/"), otherwise fall back to the local dev server.
+// Override at any time: localStorage.setItem("faq_api_base", "https://...")
+const API_BASE =
+    localStorage.getItem("faq_api_base") ||
+    (location.protocol.startsWith("http")
+        ? location.origin
+        : "http://localhost:8000");
 
 const chatArea = document.getElementById("chatArea");
 const messagesContainer = document.getElementById("messagesContainer");
@@ -8,9 +15,17 @@ const sendBtn = document.getElementById("sendBtn");
 const newChatBtn = document.getElementById("newChatBtn");
 const keyBtn = document.getElementById("keyBtn");
 const keyModal = document.getElementById("keyModal");
-const keyInput = document.getElementById("keyInput");
+const keyModalTitle = document.getElementById("keyModalTitle");
+const keyModalDesc = document.getElementById("keyModalDesc");
+const usernameInput = document.getElementById("usernameInput");
+const nameInput = document.getElementById("nameInput");
+const nameLabel = document.getElementById("nameLabel");
+const passwordInput = document.getElementById("passwordInput");
+const loginError = document.getElementById("loginError");
+const authToggle = document.getElementById("authToggle");
 const keyModalSave = document.getElementById("keyModalSave");
 const keyModalCancel = document.getElementById("keyModalCancel");
+const keyStatusText = document.getElementById("keyStatusText");
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadModal = document.getElementById("uploadModal");
 const uploadDrop = document.getElementById("uploadDrop");
@@ -22,81 +37,233 @@ const uploadCancel = document.getElementById("uploadCancel");
 
 // ---- State ----
 let isLoading = false;
-let _keyResolve = null; // promise resolver used to wait for the key modal
+let _loginResolve = null; // promise resolver used to wait for the login modal
+let authEnabled = true;
+let loginEnabled = false;
+let signupEnabled = false;
+let authMode = "login"; // "login" | "signup"
 
 // ---- Session: stable id for this browser, reused across the conversation ----
 let sessionId = localStorage.getItem("faq_session_id") || (crypto.randomUUID && crypto.randomUUID()) || Date.now().toString(36);
 localStorage.setItem("faq_session_id", sessionId);
 
-// ---- API key (persisted locally; optional if the backend disables auth) ----
-let apiKey = localStorage.getItem("faq_api_key") || "";
-let authEnabled = true;
+// ---- JWT auth (persisted locally) ----
+let token = localStorage.getItem("faq_token") || "";
+let currentUser = JSON.parse(localStorage.getItem("faq_user") || "null");
 
 function getHeaders() {
     const headers = { "Content-Type": "application/json" };
-    if (apiKey) headers["X-API-Key"] = apiKey;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
 }
 
-function updateKeyStatus() {
-    const has = !!apiKey;
-    keyStatusText.textContent = !authEnabled ? "Auth off" : has ? "Key set" : "Key needed";
-    keyBtn.classList.toggle("is-set", has);
-    keyBtn.classList.toggle("is-needed", !has && authEnabled);
+function updateAuthStatus() {
+    keyStatusText.textContent = currentUser
+        ? currentUser.name || currentUser.username
+        : !authEnabled
+        ? "Auth off"
+        : "Sign in";
+    keyBtn.classList.toggle("is-set", !!currentUser);
+    keyBtn.classList.toggle("is-needed", !currentUser && authEnabled);
     keyBtn.classList.toggle("is-off", !authEnabled);
-    keyBtn.title = !authEnabled
-        ? "API key authentication is disabled on the server."
-        : has
-        ? `API key set (…${apiKey.slice(-4)}). Click to change it.`
-        : "No API key set. Click to enter the API key.";
+    keyBtn.title = currentUser
+        ? `Signed in as ${currentUser.username}. Click to sign out.`
+        : authEnabled
+        ? loginEnabled
+            ? "Sign in to use the assistant."
+            : "No login account configured."
+        : "Authentication is disabled on the server.";
 }
 
-function openKeyModal(prefill) {
-    keyInput.value = prefill !== undefined ? prefill : apiKey;
+function storeAuth(user) {
+    currentUser = user;
+    token = localStorage.getItem("faq_token") || token;
+    localStorage.setItem("faq_user", JSON.stringify(user));
+    updateAuthStatus();
+}
+
+function clearAuth() {
+    currentUser = null;
+    token = "";
+    localStorage.removeItem("faq_token");
+    localStorage.removeItem("faq_user");
+    updateAuthStatus();
+}
+
+function setLoginError(msg) {
+    loginError.textContent = msg || "";
+}
+
+function openAuthModal(mode) {
+    authMode = mode === "signup" && signupEnabled ? "signup" : "login";
+    loginError.textContent = "";
+    usernameInput.value = "";
+    nameInput.value = "";
+    passwordInput.value = "";
+
+    const isSignup = authMode === "signup";
+    keyModalTitle.textContent = isSignup ? "Create account" : "Sign in";
+    keyModalDesc.textContent = isSignup
+        ? "Create an account to use the assistant."
+        : "Sign in with your account to use the assistant.";
+    keyModalSave.textContent = isSignup ? "Sign up" : "Sign in";
+    nameInput.hidden = !isSignup;
+    nameLabel.hidden = !isSignup;
+    passwordInput.autocomplete = isSignup ? "new-password" : "current-password";
+    authToggle.textContent = isSignup
+        ? "Already have an account? Sign in"
+        : "Create account";
+    authToggle.hidden = !signupEnabled;
+
     keyModal.classList.remove("hidden");
-    // Focus after the overlay is visible so the field is ready to type into.
     requestAnimationFrame(() => {
-        keyInput.focus();
-        keyInput.select();
+        usernameInput.focus();
+        usernameInput.select();
     });
 }
 
-function closeKeyModal(result) {
+function openLoginModal() {
+    openAuthModal("login");
+}
+
+function closeLoginModal() {
     keyModal.classList.add("hidden");
-    if (_keyResolve) {
-        _keyResolve(result);
-        _keyResolve = null;
+    if (_loginResolve) {
+        _loginResolve();
+        _loginResolve = null;
     }
 }
 
-function saveKey() {
-    const value = keyInput.value.trim();
-    apiKey = value;
-    localStorage.setItem("faq_api_key", apiKey);
-    updateKeyStatus();
-    closeKeyModal(apiKey);
+async function submitAuth() {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+
+    if (authMode === "signup") {
+        const name = nameInput.value.trim();
+        if (!username || !password) {
+            setLoginError("Enter a username and password.");
+            return;
+        }
+        if (password.length < 8) {
+            setLoginError("Password must be at least 8 characters.");
+            return;
+        }
+        await submitRegister(username, password, name);
+    } else {
+        if (!username || !password) {
+            setLoginError("Enter your username and password.");
+            return;
+        }
+        await submitLogin(username, password);
+    }
 }
 
-// Wait for the user to finish with the key modal; resolves with the new key
-// (or ""/null if the modal was dismissed without saving).
-function waitForKeyEntry() {
+async function submitLogin(username, password) {
+    keyModalSave.disabled = true;
+    keyModalSave.textContent = "Signing in…";
+    setLoginError("");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.detail || `Sign in failed (${res.status}).`);
+        }
+        token = data.access_token;
+        localStorage.setItem("faq_token", token);
+        storeAuth(data.user);
+        closeLoginModal();
+    } catch (err) {
+        setLoginError(err.message);
+        console.error("Login error:", err);
+    } finally {
+        keyModalSave.disabled = false;
+        keyModalSave.textContent = "Sign in";
+    }
+}
+
+async function submitRegister(username, password, name) {
+    keyModalSave.disabled = true;
+    keyModalSave.textContent = "Signing up…";
+    setLoginError("");
+
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.detail || `Sign up failed (${res.status}).`);
+        }
+        token = data.access_token;
+        localStorage.setItem("faq_token", token);
+        storeAuth(data.user);
+        closeLoginModal();
+        appendMessage(
+            "bot",
+            `Welcome, **${data.user.name || data.user.username}**! Account created — you're all set to ask questions.`
+        );
+    } catch (err) {
+        setLoginError(err.message);
+        console.error("Sign-up error:", err);
+    } finally {
+        keyModalSave.disabled = false;
+        keyModalSave.textContent = "Sign up";
+    }
+}
+
+function logout() {
+    if (!currentUser || confirm(`Sign out of ${currentUser.username}?`)) {
+        clearAuth();
+    }
+}
+
+// Wait for the user to finish with the login modal.
+function waitForLogin() {
     return new Promise((resolve) => {
-        _keyResolve = resolve;
+        _loginResolve = resolve;
     });
 }
 
-keyBtn.addEventListener("click", () => openKeyModal(apiKey));
-keyModalSave.addEventListener("click", saveKey);
-keyModalCancel.addEventListener("click", () => closeKeyModal(null));
-keyInput.addEventListener("keydown", (e) => {
+keyBtn.addEventListener("click", () => {
+    if (currentUser) {
+        logout();
+    } else if (loginEnabled) {
+        openLoginModal();
+    }
+});
+keyModalSave.addEventListener("click", submitAuth);
+keyModalCancel.addEventListener("click", closeLoginModal);
+authToggle.addEventListener("click", () => {
+    openAuthModal(authMode === "signup" ? "login" : "signup");
+});
+passwordInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
         e.preventDefault();
-        saveKey();
+        submitAuth();
+    }
+});
+usernameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        submitAuth();
+    }
+});
+nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        submitAuth();
     }
 });
 // Close when clicking outside the modal panel.
 keyModal.addEventListener("click", (e) => {
-    if (e.target === keyModal) closeKeyModal(null);
+    if (e.target === keyModal) closeLoginModal();
 });
 
 // ---- Document Upload ----
@@ -134,11 +301,28 @@ uploadFile.addEventListener("change", () => {
     uploadSave.disabled = uploadInProgress;
 });
 
+// Wait for login to complete before continuing an upload.
+async function ensureLoggedIn() {
+    if (currentUser || !authEnabled) return true;
+    if (loginEnabled) {
+        openLoginModal();
+        await waitForLogin();
+        return !!currentUser;
+    }
+    return false;
+}
+
 uploadSave.addEventListener("click", () => uploadDocument(false));
 
 async function uploadDocument(retried) {
     const file = uploadFile.files[0];
     if (!file || uploadInProgress) return;
+
+    if (!(await ensureLoggedIn())) {
+        uploadInProgress = false;
+        uploadSave.textContent = "Upload & Store";
+        return;
+    }
 
     uploadInProgress = true;
     uploadSave.disabled = true;
@@ -149,7 +333,7 @@ async function uploadDocument(retried) {
     formData.append("agent_ns", uploadNs.value.trim() || "course_handouts");
 
     const headers = {};
-    if (apiKey) headers["X-API-Key"] = apiKey;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
         const response = await fetch(`${API_BASE}/api/documents`, {
@@ -158,21 +342,15 @@ async function uploadDocument(retried) {
             body: formData,
         });
 
-        if (response.status === 401 && !retried) {
-            // Ask for a key, then retry the upload once.
-            const before = apiKey;
-            openKeyModal(apiKey);
-            const entered = await waitForKeyEntry();
-            if (entered && entered !== before) {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && !retried) {
+                clearAuth();
+                await ensureLoggedIn();
                 uploadInProgress = false;
                 uploadSave.textContent = "Upload & Store";
                 return uploadDocument(true);
             }
-            throw new Error("API key required to upload documents.");
-        }
-
-        const data = await response.json();
-        if (!response.ok) {
             throw new Error(data.detail || `Upload failed (${response.status})`);
         }
 
@@ -195,24 +373,41 @@ async function uploadDocument(retried) {
     }
 }
 
-// ---- Detect whether the server requires an API key ----
+// ---- Detect whether the server requires authentication ----
 async function checkAuth() {
     try {
         const res = await fetch(`${API_BASE}/api/auth/status`);
         if (!res.ok) return;
         const data = await res.json();
         authEnabled = !!data.auth_enabled;
-        updateKeyStatus();
-        // If a key is required and we don't have one, ask straight away.
-        if (authEnabled && !apiKey) {
-            requestAnimationFrame(() => openKeyModal(apiKey));
+        loginEnabled = !!data.login_enabled;
+        signupEnabled = !!data.signup_enabled;
+        // Drop a stored token if the server no longer uses JWT.
+        if (!data.methods || !data.methods.jwt) {
+            token = "";
+            localStorage.removeItem("faq_token");
+        }
+        updateAuthStatus();
+        // If login is required and we have no valid session, ask straight away.
+        if (authEnabled && !currentUser && loginEnabled) {
+            requestAnimationFrame(() => openLoginModal());
+        } else if (currentUser) {
+            // Verify the saved token is still valid.
+            try {
+                const me = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!me.ok) clearAuth();
+            } catch {
+                // Network hiccup; leave state alone.
+            }
         }
     } catch {
         // Server unreachable; the ask flow will surface the error.
     }
 }
 
-updateKeyStatus();
+updateAuthStatus();
 checkAuth();
 
 newChatBtn.addEventListener("click", async () => {
@@ -275,14 +470,11 @@ async function postAsk(question, retried = false) {
         body: JSON.stringify({ question, session_id: sessionId }),
     });
 
-    // Server requires a key. Show the modal, wait for input, then retry.
+    // Server requires auth and we got rejected: prompt for sign-in once.
     if (response.status === 401 && !retried) {
-        const before = apiKey;
-        openKeyModal(apiKey);
-        const entered = await waitForKeyEntry();
-        if (entered && entered !== before) {
-            return postAsk(question, true);
-        }
+        await ensureLoggedIn();
+        if (!currentUser) return response;
+        return postAsk(question, true);
     }
 
     return response;
@@ -313,9 +505,13 @@ async function sendQuestion() {
 
         if (response.status === 401) {
             throw new Error(
-                apiKey
-                    ? "The API key was rejected. Click the key button to update it."
-                    : "An API key is required to use this chat. Click the key button to add one."
+                currentUser
+                    ? "Your session expired. Click the user icon to sign in again."
+                    : authEnabled
+                    ? loginEnabled
+                        ? "Please sign in to use the assistant."
+                        : "No login account is configured on the server."
+                    : "Authentication is disabled on the server."
             );
         }
         if (response.status === 429) {
@@ -336,7 +532,7 @@ async function sendQuestion() {
         typingEl.remove();
         appendMessage(
             "bot",
-            err.message && err.message.includes("key")
+            err.message && err.message.includes("sign")
                 ? err.message
                 : "Sorry, I couldn't process your question right now. Please try again later."
         );
@@ -389,6 +585,25 @@ function appendMessage(role, text, sources = []) {
                 sourcesEl.appendChild(tag);
             });
 
+            // Web sources get clickable links to the fetched pages.
+            const webSources = sources.filter(
+                (s) => s.metadata?.kind === "web" && s.metadata?.source_url
+            );
+            const seenUrls = new Set();
+            webSources.forEach((s) => {
+                const href = s.metadata.source_url;
+                if (seenUrls.has(href)) return;
+                seenUrls.add(href);
+                const link = document.createElement("a");
+                link.className = "source-link";
+                link.href = href;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+                link.title = s.metadata.title || href;
+                link.textContent = s.metadata.title || new URL(href).hostname;
+                sourcesEl.appendChild(link);
+            });
+
             contentEl.appendChild(sourcesEl);
         }
     } else {
@@ -431,41 +646,13 @@ function appendTypingIndicator() {
     return messageEl;
 }
 
-// ---- Simple Markdown Formatter ----
+// ---- Markdown Rendering (marked + DOMPurify) ----
 function formatMarkdown(text) {
-    // Escape HTML
-    let html = text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    // Bold
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-    // Bullet lists
-    html = html.replace(/^[-•]\s+(.+)$/gm, "<li>$1</li>");
-    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>");
-
-    // Numbered lists
-    html = html.replace(/^\d+\.\s+(.+)$/gm, "<li>$1</li>");
-
-    // Paragraphs
-    html = html
-        .split(/\n\n+/)
-        .map((block) => {
-            block = block.trim();
-            if (!block) return "";
-            if (
-                block.startsWith("<ul>") ||
-                block.startsWith("<ol>") ||
-                block.startsWith("<li>")
-            )
-                return block;
-            return `<p>${block.replace(/\n/g, "<br>")}</p>`;
-        })
-        .join("");
-
-    return html;
+    // Sanitize first, then render. Bot output is treated as untrusted.
+    const raw = (window.marked && window.marked.parse) ? window.marked.parse(text) : text;
+    return window.DOMPurify
+        ? DOMPurify.sanitize(raw)
+        : text.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 }
 
 // ---- Scroll to bottom ----

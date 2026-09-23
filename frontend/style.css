@@ -481,6 +481,29 @@ body {
     margin: 2px 4px 2px 0;
 }
 
+.source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 260px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    margin: 2px 4px 2px 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.source-link:hover {
+    background: rgba(56, 189, 248, 0.18);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
 /* Loading Animation */
 .typing-indicator {
     display: flex;
@@ -663,6 +686,30 @@ textarea::placeholder {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
+.modal-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 14px 0 6px;
+}
+
+.modal-label:first-of-type {
+    margin-top: 6px;
+}
+
+.modal-label-optional {
+    opacity: 0.75;
+}
+
+.modal-error {
+    color: #f87171;
+    margin: 10px 0 0;
+    min-height: 16px;
+}
+
 .upload-drop {
     display: flex;
     align-items: center;
@@ -700,6 +747,19 @@ textarea::placeholder {
 .upload-hint {
     margin: 10px 0 0;
     font-size: 12px;
+}
+
+.modal-spacer {
+    flex: 1;
+}
+
+.modal-link {
+    border: none;
+    background: none;
+    color: var(--accent);
+    padding: 10px 4px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .modal-actions {

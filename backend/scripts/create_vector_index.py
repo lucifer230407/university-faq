@@ -1,3 +1,11 @@
+"""Create (or replace) the IVF vector index on the 'documents' collection.
+
+Usage (from the backend/ directory):
+    python -m scripts.create_vector_index
+
+Sizes read from the app config (VECTOR_INDEX_DIMENSIONS / VECTOR_INDEX_NUMLISTS).
+"""
+from app.config import settings
 from app.db.documentdb import db
 
 
@@ -14,9 +22,9 @@ def create_vector_index():
                 },
                 "cosmosSearchOptions": {
                     "kind": "vector-ivf",
-                    "dimensions": 1536,
-                    "similarity": "COS",
-                    "numLists": 1
+                    "dimensions": settings.VECTOR_INDEX_DIMENSIONS,
+                    "similarity": settings.VECTOR_INDEX_SIMILARITY,
+                    "numLists": settings.VECTOR_INDEX_NUMLISTS
                 }
             }
         ]

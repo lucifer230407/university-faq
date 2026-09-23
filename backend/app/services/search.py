@@ -10,6 +10,8 @@ def search_documents(query: str, limit: int = 5, agent_ns: str = None) -> list[d
         query: The user's natural language question.
         limit: Maximum number of results to return.
         agent_ns: Optional namespace filter (e.g., 'academics', 'admissions').
+            Applied as a pre-filter inside the search itself so k results are
+            *all* from the requested namespace.
 
     Returns:
         A list of matching documents with text, metadata, and similarity score.
@@ -18,14 +20,22 @@ def search_documents(query: str, limit: int = 5, agent_ns: str = None) -> list[d
 
     documents = db["documents"]
 
+    search_options = {
+        "vector": query_vector,
+        "path": "vector",
+        "k": limit
+    }
+
+    # Pre-filter inside cosmosSearch so retrieval stays within the namespace.
+    if agent_ns:
+        search_options["filter"] = {
+            "metadata.agent_ns": {"$eq": agent_ns}
+        }
+
     pipeline = [
         {
             "$search": {
-                "cosmosSearch": {
-                    "vector": query_vector,
-                    "path": "vector",
-                    "k": limit
-                }
+                "cosmosSearch": search_options
             }
         },
         {
@@ -42,7 +52,7 @@ def search_documents(query: str, limit: int = 5, agent_ns: str = None) -> list[d
 
     results = list(documents.aggregate(pipeline))
 
-    # Filter by namespace if provided
+    # Defense-in-depth: keep only matching docs if a namespace was requested.
     if agent_ns:
         results = [
             r for r in results

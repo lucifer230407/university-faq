@@ -13,6 +13,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# Secrets
+key.txt
+
 # macOS
 .DS_Store
 

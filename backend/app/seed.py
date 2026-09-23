@@ -2,7 +2,6 @@ import json
 import os
 import time
 
-from app.config import settings
 from app.db.documentdb import db
 from app.services.embeddings import generate_embedding
 

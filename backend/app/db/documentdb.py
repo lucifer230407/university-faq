@@ -1,6 +1,7 @@
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import certifi
 
 load_dotenv()
 
@@ -8,6 +9,7 @@ DOCUMENTDB_URI = os.getenv("DOCUMENTDB_URI")
 
 client = MongoClient(
     DOCUMENTDB_URI,
+    tlsCAFile=certifi.where(),
     serverSelectionTimeoutMS=5000
 )
 
@@ -23,6 +25,8 @@ def test_connection():
     try:
         client.admin.command("ping")
         print("Connected to Azure DocumentDB successfully!")
+        return True
     except Exception as e:
         print("DocumentDB connection failed:")
         print(e)
+        raise
