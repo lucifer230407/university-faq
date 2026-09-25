@@ -48,9 +48,18 @@ jobs:
           cp -r frontend deploy/frontend
           cd deploy && zip -r ../university-faq.zip . >/dev/null && cd ..
 
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v2
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          app-name: chitkara-faq-assistant
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: university-faq.zip
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/CLI@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp deploy \
+              --resource-group rg-himanshu3415.beai24-5066 \
+              --name chitkara-faq-assistant \
+              --src-path university-faq.zip \
+              --type zip
