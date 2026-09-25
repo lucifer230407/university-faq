@@ -1,0 +1,57 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest tests -q
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble deployable package
+        run: |
+          # Package layout matches the App Service startup command
+          # (gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app) run from
+          # /home/site/wwwroot, so `app/`, `requirements.txt` and `frontend/`
+          # (STATIC_DIR) must sit at the package root. Oryx pip-installs from
+          # requirements.txt because SCM_DO_BUILD_DURING_DEPLOYMENT=true.
+          rm -rf deploy && mkdir -p deploy
+          cp -r backend/app backend/data backend/requirements.txt deploy/
+          cp -r frontend deploy/frontend
+          cd deploy && zip -r ../university-faq.zip . >/dev/null && cd ..
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: chitkara-faq-assistant
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: university-faq.zip
+          type: zip
