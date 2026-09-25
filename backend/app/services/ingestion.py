@@ -174,4 +174,7 @@ def ingest_document(
         })
         time.sleep(0.1)
 
+    from app.services.search import clear_knowledge_cache
+
+    clear_knowledge_cache()
     return len(chunks)

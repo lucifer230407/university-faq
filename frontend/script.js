@@ -238,6 +238,20 @@ function waitForLogin() {
     });
 }
 
+const LOGIN_WAIT_TIMEOUT = Symbol("login-wait-timeout");
+
+// Settle `promise` no later than `ms`, returning `fallback` on timeout so an
+// ignored login prompt can never freeze the UI.
+function withTimeout(promise, ms, fallback) {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(fallback), ms);
+        promise.then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+        });
+    });
+}
+
 keyBtn.addEventListener("click", () => {
     if (currentUser) {
         logout();
@@ -320,7 +334,8 @@ async function ensureLoggedIn() {
     if (currentUser || !authEnabled) return true;
     if (loginEnabled) {
         openLoginModal();
-        await waitForLogin();
+        const waited = await withTimeout(waitForLogin(), 60000, LOGIN_WAIT_TIMEOUT);
+        if (waited === LOGIN_WAIT_TIMEOUT) closeLoginModal();
         return !!currentUser;
     }
     return false;
@@ -663,6 +678,7 @@ async function postAsk(question, retried = false) {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ question, session_id: sessionId }),
+        signal: AbortSignal.timeout(45000),
     });
 
     // Server requires auth and we got rejected: prompt for sign-in once.
@@ -724,6 +740,11 @@ async function sendQuestion() {
 
         appendMessage("bot", data.answer, data.sources);
         updateInspection(data.sources || [], Math.round(performance.now() - started));
+
+        // RAG could not answer and the help-desk email fallback is available.
+        if (data.email_available) {
+            appendHelpDeskOffer(question);
+        }
     } catch (err) {
         typingEl.remove();
         appendMessage(
@@ -739,8 +760,8 @@ async function sendQuestion() {
     }
 }
 
-// ---- Append Message ----
-function appendMessage(role, text, sources = []) {
+// ---- Message nodes ----
+function makeMessageNode(role) {
     const messageEl = document.createElement("div");
     messageEl.className = `message message-${role}`;
 
@@ -755,6 +776,15 @@ function appendMessage(role, text, sources = []) {
 
     const contentEl = document.createElement("div");
     contentEl.className = "message-content";
+
+    messageEl.appendChild(avatarEl);
+    messageEl.appendChild(contentEl);
+    return { messageEl, contentEl };
+}
+
+// ---- Append Message ----
+function appendMessage(role, text, sources = []) {
+    const { messageEl, contentEl } = makeMessageNode(role);
 
     if (role === "bot") {
         contentEl.innerHTML = formatMarkdown(text);
@@ -806,8 +836,6 @@ function appendMessage(role, text, sources = []) {
         contentEl.textContent = text;
     }
 
-    messageEl.appendChild(avatarEl);
-    messageEl.appendChild(contentEl);
     messagesContainer.appendChild(messageEl);
 
     scrollToBottom();
@@ -840,6 +868,147 @@ function appendTypingIndicator() {
 
     scrollToBottom();
     return messageEl;
+}
+
+// ---- Help Desk Email Fallback ----
+async function authedPost(path, payload, retried = false) {
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(30000),
+    });
+    if (res.status === 401 && !retried) {
+        await ensureLoggedIn();
+        if (!currentUser) return res;
+        return authedPost(path, payload, true);
+    }
+    return res;
+}
+
+function appendHelpDeskOffer(question) {
+    const { messageEl, contentEl } = makeMessageNode("bot");
+
+    const panel = document.createElement("div");
+    panel.className = "helpdesk-panel";
+
+    const prompt = document.createElement("p");
+    prompt.className = "helpdesk-prompt";
+    prompt.textContent = "Would you like me to contact the university help desk?";
+
+    const actions = document.createElement("div");
+    actions.className = "helpdesk-actions";
+
+    const draftBtn = document.createElement("button");
+    draftBtn.type = "button";
+    draftBtn.className = "helpdesk-btn helpdesk-btn-primary";
+    draftBtn.textContent = "Contact Help Desk";
+
+    actions.appendChild(draftBtn);
+    panel.append(prompt, actions);
+    contentEl.appendChild(panel);
+    messagesContainer.appendChild(messageEl);
+    scrollToBottom();
+
+    draftBtn.addEventListener("click", async () => {
+        panel.classList.add("is-busy");
+        panel.innerHTML = "";
+        const generating = document.createElement("p");
+        generating.className = "helpdesk-generating";
+        generating.textContent = "Generating email…";
+        panel.appendChild(generating);
+        scrollToBottom();
+
+        try {
+            const res = await authedPost("/api/email/draft", { question });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(payload.detail || payload.message || "Could not generate the email draft.");
+            }
+            renderEmailPreview(panel, payload.email);
+            scrollToBottom();
+        } catch (err) {
+            panel.classList.remove("is-busy");
+            panel.innerHTML = "";
+            const errEl = document.createElement("p");
+            errEl.className = "helpdesk-error";
+            errEl.textContent = err.message;
+            panel.appendChild(errEl);
+            scrollToBottom();
+        }
+    });
+}
+
+function renderEmailPreview(panel, email) {
+    panel.classList.remove("is-busy");
+    panel.innerHTML = "";
+
+    const title = document.createElement("p");
+    title.className = "helpdesk-title";
+    title.textContent = "Email draft ready — review before sending";
+
+    const preview = document.createElement("pre");
+    preview.className = "helpdesk-preview";
+    preview.textContent = `To: ${email.to}\n\nSubject: ${email.subject}\n\n${email.body}`;
+
+    const actions = document.createElement("div");
+    actions.className = "helpdesk-actions";
+
+    const sendBtn = document.createElement("button");
+    sendBtn.type = "button";
+    sendBtn.className = "helpdesk-btn helpdesk-btn-primary";
+    sendBtn.textContent = "Send Email";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "helpdesk-btn";
+    cancelBtn.textContent = "Cancel";
+
+    actions.append(cancelBtn, sendBtn);
+    panel.append(title, preview, actions);
+
+    cancelBtn.addEventListener("click", () => {
+        panel.innerHTML = "";
+        const note = document.createElement("p");
+        note.className = "helpdesk-note";
+        note.textContent = "No email was sent.";
+        panel.appendChild(note);
+        scrollToBottom();
+    });
+
+    sendBtn.addEventListener("click", async () => {
+        sendBtn.disabled = true;
+        cancelBtn.disabled = true;
+        panel.removeChild(preview);
+        panel.removeChild(actions);
+
+        const statusEl = document.createElement("p");
+        statusEl.className = "helpdesk-sending";
+        statusEl.textContent = "Sending email…";
+        panel.appendChild(statusEl);
+        scrollToBottom();
+
+        try {
+            const res = await authedPost("/api/email/send", {
+                subject: email.subject,
+                body: email.body,
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.detail || body.message || "Send failed.");
+            panel.innerHTML = "";
+            const ok = document.createElement("p");
+            ok.className = "helpdesk-success";
+            ok.textContent = "✓ Email sent successfully to the university help desk.";
+            panel.appendChild(ok);
+        } catch (err) {
+            panel.innerHTML = "";
+            const fail = document.createElement("p");
+            fail.className = "helpdesk-error";
+            fail.textContent = "✕ I couldn't send the email right now. Please try again later.";
+            panel.appendChild(fail);
+        }
+        scrollToBottom();
+    });
 }
 
 // ---- Markdown Rendering (marked + DOMPurify) ----

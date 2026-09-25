@@ -1,12 +1,13 @@
 import logging
+import re
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
 from app.config import settings
+from app.services import helpdesk_email, web_search
 from app.services.conversations import conversations
-from app.services.search import search_documents
-from app.services import web_search
+from app.services.search import lexical_search, reading_context, search_documents
 
 load_dotenv()
 
@@ -29,21 +30,33 @@ Conversation history (most recent last):
 """
 
 SYSTEM_PROMPT = """You are a helpful FAQ assistant for Chitkara University, Rajpura.
-Your job is to answer student questions using the provided context.
+You are given the full text of the uploaded PDFs (course handouts, academic
+calendar, mess menu, hostel rules) and the university FAQ. Read them and answer
+from what they actually say.
 
-The context may contain two kinds of information:
-1. "Knowledge base" entries — from the university FAQ / uploaded handouts.
-2. "Web search" entries — freshly fetched from the web (marked with a URL).
+The context may also contain "Web search" entries marked with a URL.
 
 Rules:
-- Answer based ONLY on the provided context. Do not make up information.
-- Use knowledge base entries first; use web entries to fill gaps or when asked
-  about current/up-to-date information.
-- If neither source contains enough information to answer, say:
+- Use the uploaded documents first. You may explain, compare, list, and connect
+  facts that are in those documents. That is in scope.
+- Do not invent dates, marks, names, fees, or policies that are not in the context.
+- Use web entries only to fill a gap the documents do not cover.
+- If the documents do not contain the answer, say:
   "I don't have enough information to answer that question. Please contact the university helpdesk."
 - Be concise, friendly, and professional.
 - Use bullet points or numbered lists when listing multiple items.
 - If a question is about fees, dates, or deadlines, be precise with numbers.
+- Excerpts under "Most relevant excerpts" are the closest lines. For a named
+  assessment or date, answer from the excerpt that contains that exact code
+  and course. Then use the full document for related details.
+- For a date or assessment schedule (FA, ST, ETE, formative, sessional), use
+  the academic calendar row that names that exact activity and course.
+  FA1 is not FA2, and a different course's row is not an answer.
+- If that exact schedule row is in the context, state its date and remarks.
+  Do not say the detail is missing, and do not send the student to a
+  coordinator or syllabus instead.
+- Course handouts describe weightage, topics, and coordinators. They do not
+  replace calendar dates.
 - A short conversation history follows the context. Use it to follow up on
   previous questions, but never invent facts that are missing from the context.
 
@@ -53,6 +66,15 @@ Context:
 Conversation history (most recent last):
 {history}
 """
+
+
+def render_prompt(context: str, history_text: str) -> str:
+    """Substitute context without str.format, so PDF braces are safe."""
+    return (
+        SYSTEM_PROMPT
+        .replace("{context}", context)
+        .replace("{history}", history_text)
+    )
 
 
 def rewrite_query(question: str, history_text: str) -> str:
@@ -84,24 +106,74 @@ def rewrite_query(question: str, history_text: str) -> str:
         return question
 
 
+def _format_local_hit(result: dict) -> str:
+    meta = result.get("metadata") or {}
+    label = meta.get("filename") or meta.get("source_id") or "knowledge base"
+    ns = meta.get("agent_ns")
+    header = f"[Knowledge base: {label}" + (f" | {ns}]" if ns else "]")
+    return f"{header}\n{result['text']}"
+
+
+# Phrases the LLM is told to emit (or naturally uses) when the context cannot
+# answer. When one is found, the assistant offers the help-desk email option.
+_LACKS_INFO_PATTERNS = (
+    r"don'?t have enough information",
+    r"do not have enough information",
+    r"doesn'?t have enough information",
+    r"does not have enough information",
+    r"don'?t have sufficient information",
+    r"do not have sufficient information",
+    r"not enough information",
+    r"couldn'?t find (?:reliable )?information",
+    r"could not find (?:reliable )?information",
+    r"i (?:couldn'?t|could not) find",
+    r"cannot answer that question",
+    r"can'?t answer that question",
+    r"unable to answer",
+    r"i don'?t know",
+    r"i do not know",
+    r"not (?:available|covered|included) in (?:my|the)",
+    r"no (?:reliable )?information",
+    r"contact the (?:university )?helpdesk",
+    r"university helpdesk",
+)
+_LACKS_INFO_RE = re.compile(
+    "|".join(_LACKS_INFO_PATTERNS), re.IGNORECASE
+)
+
+
+def _answer_lacks_info(answer: str) -> bool:
+    """Best-effort check that the model admitted it had no grounded answer."""
+    return bool(answer and _LACKS_INFO_RE.search(answer))
+
+
 def retrieve_local(query: str):
-    """Vector-search the knowledge base; returns (context_parts, sources)."""
-    results = search_documents(query, limit=5)
+    """Vector-search the knowledge base; returns (context_parts, sources, hits)."""
+    vector_hits = search_documents(query, limit=8)
+    lexical_hits = lexical_search(query, limit=4)
 
     context_parts = []
     sources = []
+    hits = []
+    seen = set()
 
-    for r in results:
-        score = r.get("score", 0)
-        if score < SIMILARITY_THRESHOLD:
+    for r in lexical_hits + vector_hits:
+        text = r.get("text") or ""
+        key = text[:240]
+        if not text or key in seen:
             continue
-        context_parts.append(r["text"])
+        score = r.get("score", 0)
+        if not r.get("lexical") and score < SIMILARITY_THRESHOLD:
+            continue
+        seen.add(key)
+        hits.append(r)
+        context_parts.append(_format_local_hit(r))
         sources.append({
-            "text": r["text"][:200] + "..." if len(r["text"]) > 200 else r["text"],
+            "text": text[:200] + "..." if len(text) > 200 else text,
             "metadata": r.get("metadata", {}),
             "score": score
         })
-    return context_parts, sources
+    return context_parts, sources, hits
 
 
 def retrieve_web(query: str, local_found: bool):
@@ -149,36 +221,55 @@ def ask(question: str, session_id: str = None) -> dict:
     search_query = question
     if history:
         search_query = rewrite_query(question, history_text)
-    local_parts, local_sources = retrieve_local(search_query)
+    local_parts, local_sources, hits = retrieve_local(search_query)
+    packed = reading_context(search_query, hits)
 
-    # Step 2: Web grounding (current info about Chitkara University)
-    web_parts, web_sources = retrieve_web(search_query, local_found=bool(local_parts))
-
-    context_parts = local_parts + web_parts
-    sources = local_sources + web_sources
-    context = "\n\n---\n\n".join(context_parts) if context_parts else "No relevant information found."
-
-    # Step 3: Build messages with history
-    messages = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT.format(
-                context=context,
-                history=history_text,
-            )
-        },
-        *history,
-        {"role": "user", "content": question},
-    ]
-
-    response = client.chat.completions.create(
-        model=CHAT_DEPLOYMENT,
-        messages=messages,
-        temperature=settings.GPT_TEMPERATURE,
-        max_tokens=settings.GPT_MAX_TOKENS
+    # Step 2: Web grounding only when nothing local was retrieved.
+    web_parts, web_sources = retrieve_web(
+        search_query,
+        local_found=bool(packed or local_parts),
     )
 
-    answer = response.choices[0].message.content
+    sources = local_sources + web_sources
+    if packed:
+        context = packed
+        if web_parts:
+            context = f"{packed}\n\n---\n\n" + "\n\n---\n\n".join(web_parts)
+    else:
+        context_parts = local_parts + web_parts
+        context = "\n\n---\n\n".join(context_parts) if context_parts else "No relevant information found."
+
+    # Help-desk email fallback is only offered when it is configured AND the
+    # retrieval/answer genuinely indicates no reliable information exists.
+    email_available = False
+
+    if not sources:
+        # Nothing cleared the similarity threshold locally or reached the web
+        # grounding. Never let the model hallucinate: return the deterministic
+        # fallback without a generation round-trip.
+        answer = helpdesk_email.NO_INFO_ANSWER
+        email_available = helpdesk_email.email_configured()
+    else:
+        # Step 3: Build messages with history
+        messages = [
+            {
+                "role": "system",
+                "content": render_prompt(context, history_text)
+            },
+            *history,
+            {"role": "user", "content": question},
+        ]
+
+        response = client.chat.completions.create(
+            model=CHAT_DEPLOYMENT,
+            messages=messages,
+            temperature=settings.GPT_TEMPERATURE,
+            max_tokens=settings.GPT_MAX_TOKENS
+        )
+
+        answer = response.choices[0].message.content
+        if _answer_lacks_info(answer):
+            email_available = helpdesk_email.email_configured()
 
     # Step 4: Store the exchange
     conversations.append(session_id, "user", question)
@@ -188,6 +279,8 @@ def ask(question: str, session_id: str = None) -> dict:
         "answer": answer,
         "sources": sources,
         "session_id": session_id,
+        "email_available": email_available,
+        "email_required": False,
     }
 
 

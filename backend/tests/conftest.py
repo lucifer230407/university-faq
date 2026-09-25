@@ -12,6 +12,12 @@ os.environ.setdefault("ADMIN_USERNAME", "")
 os.environ.setdefault("ADMIN_PASSWORD", "")
 os.environ.setdefault("DOCUMENTDB_URI", "mongodb://fake.local/test")
 os.environ.setdefault("SIMILARITY_THRESHOLD", "0.30")
+# Keep the help-desk email service inactive unless a test configures it.
+os.environ.setdefault("SMTP_HOST", "")
+os.environ.setdefault("SMTP_PORT", "0")
+os.environ.setdefault("SMTP_USERNAME", "")
+os.environ.setdefault("SMTP_PASSWORD", "")
+os.environ.setdefault("HELPDESK_EMAIL", "")
 
 
 class FakeResponse:

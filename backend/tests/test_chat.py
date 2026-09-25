@@ -56,6 +56,62 @@ class TestAsk:
         hist = chat.conversations.get("default")
         assert len(hist) == 2 and hist[-1]["role"] == "assistant"
 
+    def test_lexical_schedule_hit_kept_ahead_of_handout(self, monkeypatch):
+        fake = FakeChat(returns="FA2 is Mon, Nov 23 to Fri, Nov 27, 2026.")
+        monkeypatch.setattr(chat, "client", fake)
+        monkeypatch.setattr(
+            chat,
+            "search_documents",
+            lambda q, limit=5: [
+                fake_doc("Course Coordinator Dr. Meena Rani", "course_handouts", 0.9)
+            ],
+        )
+        monkeypatch.setattr(
+            chat,
+            "lexical_search",
+            lambda q, limit=3: [
+                {
+                    "text": "FA2 - Full stack AI Engineering Mon, Nov 23 to Fri, Nov 27, 2026",
+                    "metadata": {"agent_ns": "academic calendar", "filename": "calendar.pdf"},
+                    "score": 9.0,
+                    "lexical": True,
+                }
+            ],
+        )
+        result = chat.ask("When is FA2 for Full Stack AI Engineering?")
+        assert result["sources"][0]["metadata"]["agent_ns"] == "academic calendar"
+        prompt = fake.calls[-1]["messages"][0]["content"]
+        assert "FA2 - Full stack AI Engineering" in prompt
+        assert "Do not say the detail is missing" in prompt
+
+    def test_full_pdf_is_what_the_model_reads(self, monkeypatch):
+        fake = FakeChat(returns="From the handout.")
+        monkeypatch.setattr(chat, "client", fake)
+        monkeypatch.setattr(
+            chat,
+            "search_documents",
+            lambda q, limit=8: [
+                {
+                    "text": "intro",
+                    "metadata": {
+                        "filename": "handout.pdf",
+                        "agent_ns": "course_handouts",
+                        "chunk_index": 1,
+                    },
+                    "score": 0.8,
+                }
+            ],
+        )
+        monkeypatch.setattr(
+            chat,
+            "reading_context",
+            lambda query, hits: "===== DOCUMENT: handout.pdf =====\nCLO01 uses {react} and FastAPI",
+        )
+        chat.ask("What stack does the course use?")
+        prompt = fake.calls[-1]["messages"][0]["content"]
+        assert "CLO01 uses {react} and FastAPI" in prompt
+        assert fake.calls[-1]["max_tokens"] == chat.settings.GPT_MAX_TOKENS
+
     def test_low_score_sources_filtered(self, monkeypatch):
         fake = FakeChat(returns="No idea.")
         monkeypatch.setattr(chat, "client", fake)

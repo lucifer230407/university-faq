@@ -295,5 +295,26 @@
       "source_id": "location_other_campuses",
       "campus": "Himachal Pradesh"
     }
+  },
+  {
+    "question": "What is the student WiFi password?",
+    "answer": "The student Wi-Fi password is CUPunjab.",
+    "category": "Wi-Fi"
+  },
+  {
+    "question": "Student wifi ka password kya hai?",
+    "answer": "The student Wi-Fi password is CUPunjab.",
+    "category": "Wi-Fi"
+  },
+  {
+    "question": "What is the library WiFi password?",
+    "answer": "The library Wi-Fi password is CUlibrary.",
+    "category": "Wi-Fi"
+  },
+  {
+    "question": "Library wifi ka password kya hai?",
+    "answer": "The library Wi-Fi password is CUlibrary.",
+    "category": "Wi-Fi"
   }
+
 ]

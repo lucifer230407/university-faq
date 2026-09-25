@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_DOCS: int = 5
     RATE_LIMIT_CLEAR: int = 10
     RATE_LIMIT_REGISTER: int = 5
+    RATE_LIMIT_DRAFT: int = 10
+    RATE_LIMIT_SEND: int = 5
     RATE_LIMIT_WINDOW: int = 60
 
     # --- Ingestion / chunking ---
@@ -61,8 +63,10 @@ class Settings(BaseSettings):
     VECTOR_INDEX_SIMILARITY: str = "COS"
 
     # --- LLM generation ---
-    GPT_TEMPERATURE: float = 0.3
-    GPT_MAX_TOKENS: int = 1024
+    # gpt-4.1-mini shares the 1M-token window. Answers read the uploaded PDFs,
+    # so allow a full reply instead of a short snippet.
+    GPT_TEMPERATURE: float = 0.2
+    GPT_MAX_TOKENS: int = 4096
     QUERY_REWRITE_MAX_TOKENS: int = 80
 
     # --- Server / CORS ---
@@ -102,6 +106,22 @@ class Settings(BaseSettings):
     # --- Redis so history/limits survive restarts and multi-worker deploys.
     REDIS_URL: str | None = None
 
+    # --- Help desk email / SMTP fallback ---
+    # When RAG cannot find reliable information the assistant offers to email
+    # the university help desk. All credentials stay server-side.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    # Whether to upgrade to STARTTLS after connecting (Gmail/Outlook use 587).
+    # Set false for implicit TLS on port 465.
+    SMTP_USE_TLS: bool = True
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    # Recipient for student help-desk emails. Enforced server-side; clients may
+    # never choose the destination.
+    HELPDESK_EMAIL: str | None = None
+    EMAIL_SEND_TIMEOUT: int = 15
+    EMAIL_SIGNATURE_NAME: str = "University FAQ Assistant User"
+
     @property
     def api_keys(self) -> list[str]:
         return [k.strip() for k in self.API_KEYS_RAW.split(",") if k.strip()]
@@ -128,7 +148,20 @@ class Settings(BaseSettings):
             "documents": (self.RATE_LIMIT_DOCS, self.RATE_LIMIT_WINDOW),
             "clear": (self.RATE_LIMIT_CLEAR, self.RATE_LIMIT_WINDOW),
             "register": (self.RATE_LIMIT_REGISTER, self.RATE_LIMIT_WINDOW),
+            "draft": (self.RATE_LIMIT_DRAFT, self.RATE_LIMIT_WINDOW),
+            "send": (self.RATE_LIMIT_SEND, self.RATE_LIMIT_WINDOW),
         }
+
+    @property
+    def helpdesk_configured(self) -> bool:
+        """True only when every SMTP credential plus the recipient is present."""
+        return bool(
+            self.SMTP_HOST
+            and self.SMTP_PORT
+            and self.SMTP_USERNAME
+            and self.SMTP_PASSWORD
+            and self.HELPDESK_EMAIL
+        )
 
 
 @lru_cache

@@ -375,3 +375,104 @@ body.is-admin #uploadBtn.admin-only {
     resize: none;
     max-height: 7.5rem;
 }
+
+/* ---- Help desk email fallback ---- */
+.helpdesk-panel {
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(208, 194, 213, 0.7);
+}
+
+.helpdesk-panel.is-busy {
+    border-top: none;
+    padding-top: 0;
+}
+
+.helpdesk-prompt {
+    margin: 0 0 0.6rem;
+    color: #4d4353;
+}
+
+.helpdesk-generating,
+.helpdesk-sending {
+    margin: 0;
+    color: #734f8e;
+    font-style: italic;
+}
+
+.helpdesk-title {
+    margin: 0 0 0.5rem;
+    color: #1f1922;
+    font-weight: 650;
+}
+
+.helpdesk-preview {
+    margin: 0 0 0.75rem;
+    padding: 0.75rem 0.85rem;
+    background: #f6eaf7;
+    border: 1px solid rgba(208, 194, 213, 0.7);
+    border-radius: 0.75rem;
+    color: #1f1922;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.helpdesk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.helpdesk-btn {
+    border: 1px solid #d0c2d5;
+    background: #fff;
+    color: #4d4353;
+    border-radius: 9999px;
+    padding: 0.45rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.helpdesk-btn:hover {
+    border-color: #741bb3;
+    color: #57008d;
+}
+
+.helpdesk-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.helpdesk-btn-primary {
+    background: #741bb3;
+    border-color: #741bb3;
+    color: #fff;
+}
+
+.helpdesk-btn-primary:hover {
+    background: #57008d;
+    color: #fff;
+}
+
+.helpdesk-note {
+    margin: 0;
+    color: #734f8e;
+    font-size: 0.8125rem;
+}
+
+.helpdesk-success {
+    margin: 0;
+    color: #1b6e3a;
+    font-weight: 600;
+}
+
+.helpdesk-error {
+    margin: 0;
+    color: #ba1a1a;
+    font-weight: 500;
+}

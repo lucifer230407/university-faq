@@ -17,6 +17,7 @@ from app.services.auth import (
     signup_enabled,
 )
 from app.services.chat import ask, clear_conversation
+from app.services import helpdesk_email
 from app.services.ingestion import ingest_document
 from app.services.security import rate_limit
 
@@ -74,6 +75,20 @@ class AnswerResponse(BaseModel):
     answer: str
     sources: list[SourceItem]
     session_id: str
+    # True when RAG found no reliable answer and the help-desk email fallback
+    # is available (SMTP configured). The frontend offers the option then.
+    email_available: bool = False
+    # Reserved for the flow — emailing the help desk is always optional.
+    email_required: bool = False
+
+
+class EmailDraftRequest(BaseModel):
+    question: str = Field(..., max_length=500, min_length=1)
+
+
+class EmailSendRequest(BaseModel):
+    subject: str = Field(default="", max_length=200)
+    body: str = Field(default="", max_length=5000)
 
 
 class LoginRequest(BaseModel):
@@ -206,6 +221,71 @@ def clear_session(request: ClearRequest):
     """Forget the conversation history for a session."""
     clear_conversation(request.session_id)
     return {"status": "cleared", "session_id": request.session_id or "default"}
+
+
+@app.post(
+    "/api/email/draft",
+    dependencies=[Depends(require_auth), *rate_limit("draft")],
+)
+def email_draft(request: EmailDraftRequest):
+    """Generate a professional help-desk email draft from the user's question.
+
+    Only the question is required; the recipient is always the configured
+    ``HELPDESK_EMAIL`` and the client can never choose an SMTP destination.
+    """
+    if not helpdesk_email.email_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Email service is not configured on the server.",
+        )
+    question = (request.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    try:
+        draft = helpdesk_email.generate_email_draft(question)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        # Log detail server-side; keep the response credential-free.
+        logger.exception("/api/email/draft failed")
+        raise HTTPException(
+            status_code=500, detail="Could not generate the email draft."
+        )
+    return {"success": True, "email": draft}
+
+
+@app.post(
+    "/api/email/send",
+    dependencies=[Depends(require_auth), *rate_limit("send")],
+)
+def email_send(request: EmailSendRequest):
+    """Send the user-confirmed email draft to the help desk over SMTP.
+
+    The recipient is overridden with the server-configured ``HELPDESK_EMAIL``
+    even if one is supplied, so mail can never be redirected elsewhere.
+    """
+    if not helpdesk_email.email_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Email service is not configured on the server.",
+        )
+    subject = (request.subject or "").strip()
+    body = (request.body or "").strip()
+    if not subject or not body:
+        raise HTTPException(
+            status_code=400, detail="Subject and body are required."
+        )
+    try:
+        # `to` intentionally omitted: the service always uses HELPDESK_EMAIL.
+        return helpdesk_email.send_email(subject=subject, body=body)
+    except helpdesk_email.HelpDeskEmailError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception:
+        logger.exception("/api/email/send failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to send the email. Please try again later.",
+        )
 
 
 @app.post(
