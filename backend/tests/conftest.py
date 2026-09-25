@@ -19,6 +19,14 @@ os.environ.setdefault("SMTP_USERNAME", "")
 os.environ.setdefault("SMTP_PASSWORD", "")
 os.environ.setdefault("HELPDESK_EMAIL", "")
 
+# Dummy Azure OpenAI creds so import-time OpenAI(...) construction never fails
+# in CI (where no .env exists). Tests never call the real client; they use the
+# FakeChat/fake-embedding fakes below.
+os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://dummy.openai.azure.com")
+os.environ.setdefault("AZURE_OPENAI_API_KEY", "dummy-openai-key")
+os.environ.setdefault("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
+os.environ.setdefault("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4.1-mini")
+
 
 class FakeResponse:
     """Minimal stand-in for an OpenAI chat completion response."""
